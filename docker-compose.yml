@@ -34,6 +34,7 @@ services:
   # 3. Your existing MOSIP TUS Server
   mosip-tusd:
     image: mosip-tusd:latest
+    build: .
     container_name: mosip_tusd_server
     ports:
       - "8080:1080"

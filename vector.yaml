@@ -19,7 +19,7 @@ transforms:
     type: "remap"
     inputs:
       - "tusd_telemetry"
-    source: 'parsed, err = parse_json(.message); if err == null { . = merge!(., parsed) }; .pipeline_processed_at = now()'
+    source: 'parsed, err = parse_json(.message); if err != null { abort }; . = merge!(., parsed); .pipeline_processed_at = now()'
 
 sinks:
   kafka_out:
