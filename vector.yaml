@@ -1,0 +1,44 @@
+# vector.yaml
+# this one is the vector 
+# Explicitly set a writable data directory for Vector's internal file tracking
+data_dir: "/tmp"
+
+sources:
+  tusd_telemetry:
+    type: "file"
+    # Vector will watch the shared volume directory
+    include:
+      - "/var/log/tusd/*"
+    # Ignore the .info tracking metadata files
+    exclude:
+      - "/var/log/tusd/*.info"
+    read_from: "beginning"
+
+transforms:
+  parse_json:
+    type: "remap"
+    inputs:
+      - "tusd_telemetry"
+    source: 'parsed, err = parse_json(.message); if err == null { . = merge!(., parsed) }; .pipeline_processed_at = now()'
+
+sinks:
+  kafka_out:
+    type: "kafka"
+    inputs:
+      - "parse_json"
+    # Communicate with the local kafka container over the internal Docker network port
+    bootstrap_servers: "kafka:29092"
+    topic: "registration-client-telemetry"
+    encoding:
+      codec: "json"
+    healthcheck:
+      enabled: false
+      
+  # Commenting out the console sink for production. Uncomment for local debugging!
+  # console_out:
+  #   type: "console"
+  #   inputs:
+  #     - "parse_json"
+  #   target: "stdout"
+  #   encoding:
+  #     codec: "json"
