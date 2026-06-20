@@ -1,24 +1,36 @@
 # vector.yaml
-# this one is the vector 
-# Explicitly set a writable data directory for Vector's internal file tracking
+# Writable data directory for Vector's internal file-tracking/checkpoints
 data_dir: "/tmp"
 
 sources:
   tusd_telemetry:
     type: "file"
-    # Vector will watch the shared volume directory
     include:
+      # CONFIRMED via real container logs/data: each telemetry event is its
+      # own individual tus upload — filename is the random hex ID tusd
+      # assigns (no extension), content is one JSON object. So watching
+      # everything except the *.info metadata files tusd also writes is
+      # correct here — no separate hook-script log file needed.
       - "/var/log/tusd/*"
-    # Ignore the .info tracking metadata files
     exclude:
+      # tusd writes a "<id>.info" metadata file alongside every upload —
+      # that's not an event, skip it.
       - "/var/log/tusd/*.info"
     read_from: "beginning"
+    # PROD: prevents an unbounded backlog read on first boot if old files
+    # are sitting in the volume from before Vector was deployed.
+    # ignore_older_secs: 86400
 
 transforms:
   parse_json:
     type: "remap"
     inputs:
       - "tusd_telemetry"
+    # NOTE: if parse_json fails here, the event is dropped with no trace.
+    # While debugging, swap `abort` for routing failures to a separate
+    # output so you can actually see what's failing to parse (see the
+    # commented `parse_json._dropped` notes below, or just temporarily
+    # log to console — see console_out sink at the bottom).
     source: 'parsed, err = parse_json(.message); if err != null { abort }; . = merge!(., parsed); .pipeline_processed_at = now()'
 
 sinks:
@@ -26,19 +38,32 @@ sinks:
     type: "kafka"
     inputs:
       - "parse_json"
-    # Communicate with the local kafka container over the internal Docker network port
+    # Internal Docker network port (matches KAFKA_ADVERTISED_LISTENERS PLAINTEXT://kafka:29092)
     bootstrap_servers: "kafka:29092"
     topic: "registration-client-telemetry"
     encoding:
       codec: "json"
     healthcheck:
       enabled: false
-      
-  # Commenting out the console sink for production. Uncomment for local debugging!
+    # PROD suggestions (uncomment/tune once verified working in dev):
+    # compression: "snappy"
+    # batch:
+    #   max_bytes: 1048576
+    #   timeout_secs: 5
+    # librdkafka_options:
+    #   message.send.max.retries: "10"
+    #   retry.backoff.ms: "500"
+    # If your real Kafka cluster uses auth/TLS in prod, this is where
+    # sasl.* / tls.* settings go — never run PLAINTEXT against a public
+    # broker.
+
+  # Debugging sink — uncomment temporarily while reproducing the issue
+  # to see exactly what Vector is reading and whether parse_json succeeds.
+  # Re-comment before going back to production.
   # console_out:
   #   type: "console"
   #   inputs:
-  #     - "parse_json"
+  #     - "tusd_telemetry"   # raw, pre-parse — confirms files are even being read
   #   target: "stdout"
   #   encoding:
   #     codec: "json"
