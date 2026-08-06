@@ -1,5 +1,5 @@
 # vector.yaml
-data_dir: "/tmp"
+data_dir: "/var/lib/vector"   #  for local - "/tmp"
 
 sources:
   tusd_telemetry:
@@ -44,25 +44,3 @@ sinks:
       codec: "json"
     healthcheck:
       enabled: false
-    # PROD suggestions (uncomment/tune once verified working in dev):
-    # compression: "snappy"
-    # batch:
-    #   max_bytes: 1048576
-    #   timeout_secs: 5
-    # librdkafka_options:
-    #   message.send.max.retries: "10"
-    #   retry.backoff.ms: "500"
-    # If your real Kafka cluster uses auth/TLS in prod, this is where
-    # sasl.* / tls.* settings go — never run PLAINTEXT against a public
-    # broker.
-
-  # Debugging sink — uncomment temporarily while reproducing the issue
-  # to see exactly what Vector is reading and whether parse_json succeeds.
-  # Re-comment before going back to production.
-  # console_out:
-  #   type: "console"
-  #   inputs:
-  #     - "tusd_telemetry"   # raw, pre-parse — confirms files are even being read
-  #   target: "stdout"
-  #   encoding:
-  #     codec: "json"

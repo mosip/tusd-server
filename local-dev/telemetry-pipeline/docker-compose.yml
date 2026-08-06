@@ -25,7 +25,7 @@ services:
       zookeeper:
         condition: service_healthy
     ports:
-      - "9092:9092"
+      - "127.0.0.1:9092:9092" # for local remove 127.0.0.1:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
@@ -54,7 +54,7 @@ services:
     container_name: mosip_tusd_server
     restart: unless-stopped
     ports:
-      - "8080:1080"
+      - "127.0.0.1:8080:8080"
     volumes:
       - telemetry_shared_volume:/srv/tusd-data/data
   
@@ -66,6 +66,7 @@ services:
     volumes:
       - telemetry_shared_volume:/var/log/tusd:ro
       - ./vector.yaml:/etc/vector/vector.yaml:ro
+      - vector_data:/var/lib/vector # added for solve coderabbit issue
     depends_on:
       mosip-tusd:
         condition: service_started
@@ -81,7 +82,7 @@ services:
       kafka:
         condition: service_healthy
     ports:
-      - "8083:8083"
+      - "127.0.0.1:8083:8083"
     environment:
       CONNECT_BOOTSTRAP_SERVERS: "kafka:29092"
       CONNECT_REST_ADVERTISED_HOST_NAME: "kafka-connect"
@@ -128,7 +129,7 @@ services:
       # PROD: never disable security like this outside local dev.
       ES_JAVA_OPTS: "-Xms512m -Xmx512m"
     ports:
-      - "9200:9200"
+      - "127.0.0.1:9200:9200"
     volumes:
       - es_data:/usr/share/elasticsearch/data
     healthcheck:
@@ -148,13 +149,11 @@ services:
     environment:
       ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
     ports:
-      - "5601:5601"
+      - "127.0.0.1:5601:5601"
  
 volumes:
   telemetry_shared_volume:
+  vector_data: # added for solve coderabbit issue
   connect_plugins:
   es_data:
-
-
-
 
