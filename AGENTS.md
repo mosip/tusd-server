@@ -8,8 +8,9 @@ This repo packages [tus](https://tus.io/) resumable-upload support for MOSIP.
 from-scratch Go implementation — there is no Go source code here at all. It
 is a thin deployment wrapper:
 
-- A `Dockerfile` that starts `FROM tusproject/tusd:v1.8` (the upstream
-  vendored binary) and only adds build-metadata labels and an entrypoint.
+- A `Dockerfile` that starts `FROM tusproject/tusd@sha256:...` (pinned to
+  the `v1.8` digest, the upstream vendored binary) and only adds
+  build-metadata labels and an entrypoint.
 - A Helm chart that deploys that image into a MOSIP Kubernetes cluster
   (Istio routing, config maps, PVC, service monitor, service account).
 - Shell scripts under `deploy/tusd` that install/restart/delete the Helm
@@ -21,8 +22,9 @@ this repository.
 
 ## Technology Stack
 
-- **Runtime**: upstream `tusproject/tusd:v1.8` Docker image (Go binary,
-  built by the tus project — not built from source here).
+- **Runtime**: upstream `tusproject/tusd` Docker image, pinned to the
+  `v1.8` digest in `tusd-server/Dockerfile` (Go binary, built by the tus
+  project — not built from source here).
 - **Containerization**: Docker (`tusd-server/Dockerfile`).
 - **Deployment**: Helm 3 chart (`helm/tusd`), depending on the Bitnami
   `common` chart (`https://charts.bitnami.com/bitnami`, tag
@@ -40,6 +42,14 @@ build/inspect it:
 
 ```shell
 docker build -t tusd-server:local ./tusd-server
+```
+
+Build the chart's dependencies (it declares Bitnami `common` as a
+dependency; `helm/tusd/charts/` is not vendored/committed) before linting
+or templating, otherwise both commands below fail:
+
+```shell
+helm dependency build ./helm/tusd
 ```
 
 Lint the Helm chart before submitting chart changes:
@@ -79,7 +89,12 @@ no `package.json`, no Go module). Do not invent test commands.
   (`http://authmanager.kernel`) and `key_url_env`
   (`http://keymanager.keymanager`) are hardcoded in
   `helm/tusd/templates/deployment.yaml`; change them there, not in
-  `values.yaml`, if the in-cluster service names differ.
+  `values.yaml`, if the in-cluster service names differ. These are plain
+  `http://` in-cluster URLs — this repo/chart does not itself configure
+  Istio `PeerAuthentication`/`DestinationRule` mTLS enforcement, so they
+  are only as safe as the mesh-wide mTLS policy applied elsewhere in the
+  cluster (typically in `istio-system`). Do not assume traffic is
+  encrypted in transit unless you've confirmed that policy is in place.
 - No `.env`, secrets file, or credentials file exists in this repository —
   do not add one. Do not commit real hostnames, tokens, or kubeconfigs into
   `values.yaml` or the `deploy/tusd` scripts.
@@ -88,7 +103,7 @@ no `package.json`, no Go module). Do not invent test commands.
 
 ```text
 tusd-server/
-  Dockerfile              # FROM tusproject/tusd:v1.8, adds labels + entrypoint
+  Dockerfile              # FROM tusproject/tusd@sha256:... (v1.8), adds labels + entrypoint
 deploy/tusd/
   README.md               # stub doc (copied from a print-service template)
   install.sh              # helm install of the tusd-service release
@@ -119,6 +134,11 @@ Notes on the above:
 - The chart's `version` in `Chart.yaml` (`0.0.1-develop`) and the version
   pinned in `deploy/tusd/install.sh`/`restart.sh` (`CHART_VERSION=0.0.1-develop`)
   must be kept in sync manually; there is no automation tying them together.
+  Check for drift with:
+
+  ```shell
+  rg -n '^(version:|CHART_VERSION=)' helm/tusd/Chart.yaml deploy/tusd/install.sh deploy/tusd/restart.sh
+  ```
 
 ## Development Workflow
 
@@ -135,8 +155,10 @@ Notes on the above:
 
 3. Make your change:
    - Dockerfile/image changes: verify the tag against
-     `https://hub.docker.com/r/tusproject/tusd/tags` and update
-     `tusd-server/Dockerfile` and, if the container entrypoint/port
+     `https://hub.docker.com/r/tusproject/tusd/tags`, resolve its current
+     digest from the registry, and update `tusd-server/Dockerfile`'s
+     `FROM tusproject/tusd@sha256:...` pin (keep the tag noted in a
+     comment above it) and, if the container entrypoint/port
      changes, `helm/tusd/values.yaml` (`containerPort`) and
      `helm/tusd/templates/deployment.yaml` in tandem.
    - Helm chart changes: run `helm lint ./helm/tusd` and
