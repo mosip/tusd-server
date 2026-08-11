@@ -1,5 +1,4 @@
-# Approved upstream tag: tusproject/tusd:v1.8
-FROM tusproject/tusd@sha256:04af04cbf28542d15f992a747c05199be11460e9eacf2c0721112c8bea4bb1c0
+FROM tusproject/tusd:v1.8
 
 ARG SOURCE
 ARG COMMIT_HASH
