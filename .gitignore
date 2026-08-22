@@ -10,6 +10,8 @@ env/
 # Test generated files
 test_telemetry.json
 
+#test case
+Test_case/
 # IDEs
 .vscode/
 .idea/
