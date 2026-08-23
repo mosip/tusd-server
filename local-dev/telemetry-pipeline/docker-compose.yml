@@ -60,7 +60,7 @@ services:
     container_name: mosip_tusd_server
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:1080:1080"
     volumes:
       - telemetry_shared_volume:/srv/tusd-data/data
   
