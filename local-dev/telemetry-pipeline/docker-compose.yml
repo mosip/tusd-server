@@ -79,9 +79,12 @@ services:
       - alloy_data:/var/lib/alloy/data
     command: run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.alloy
     depends_on:
-      - mosip-tusd
-      - loki
-      - prometheus
+      mosip-tusd:
+       condition: service_started
+      loki:
+        condition: service_healthy
+      prometheus:
+        condition: service_healthy
   # ---------------------------------------------------------------------------------------------------------------------------------
 
   # ------------------- This service part of new architecture - Grafana Alloy + Loki + Prometheus + Grafana-----------------------------
@@ -93,6 +96,11 @@ services:
     ports:
       - "127.0.0.1:3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   # ---------------------------------------------------------------------------------------------------------------------------------
 
@@ -107,7 +115,11 @@ services:
       - "127.0.0.1:9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9090/-/healthy || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   # ---------------------------------------------------------------------------------------------------------------------------------
 
