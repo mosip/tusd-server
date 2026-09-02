@@ -1,10 +1,25 @@
 local.file_match "tusd_logs" {
-  path_targets = [{"__path__" = "/var/log/tusd/*"}]
+  path_targets = [{"__path__" = "/var/log/tusd/*.log"}]
 }
 
 loki.source.file "telemetry_files" {
   targets    = local.file_match.tusd_logs.targets
-  forward_to = [loki.write.local_loki.receiver]
+  forward_to = [loki.process.tusd_logs.receiver]
+}
+
+loki.process "tusd_logs"{
+  stage.json{
+    expressions={
+      level="level",
+    }
+  }
+  stage.labels {
+    values={
+      level="",
+    }
+  }
+
+  forward_to=[loki.write.local_loki.receiver]
 }
 
 loki.write "local_loki" {
