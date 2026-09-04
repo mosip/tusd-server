@@ -1,9 +1,23 @@
 local.file_match "tusd_logs" {
-  path_targets = [{"__path__" = "/var/log/tusd/*.log"}]
+  path_targets = [{"__path__" = "/var/log/tusd/*"}]
+}
+discovery.relabel "exclude_info_sidecars" {
+  targets = local.file_match.tusd_logs.targets
+  
+  rule {
+    target_label = "job"
+    replacement  = "tusd_logs"
+  }
+  
+  rule {
+    source_labels = ["__path__"]
+    regex         = ".*\\.info$"
+    action        = "drop"
+  }
 }
 
 loki.source.file "telemetry_files" {
-  targets    = local.file_match.tusd_logs.targets
+  targets    = discovery.relabel.exclude_info_sidecars.output
   forward_to = [loki.process.tusd_logs.receiver]
 }
 
