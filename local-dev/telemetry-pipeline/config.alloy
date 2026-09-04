@@ -1,0 +1,43 @@
+local.file_match "tusd_logs" {
+  path_targets = [{"__path__" = "/var/log/tusd/*"}]
+}
+discovery.relabel "exclude_info_sidecars" {
+  targets = local.file_match.tusd_logs.targets
+  
+  rule {
+    target_label = "job"
+    replacement  = "tusd_logs"
+  }
+  
+  rule {
+    source_labels = ["__path__"]
+    regex         = ".*\\.info$"
+    action        = "drop"
+  }
+}
+
+loki.source.file "telemetry_files" {
+  targets    = discovery.relabel.exclude_info_sidecars.output
+  forward_to = [loki.process.tusd_logs.receiver]
+}
+
+loki.process "tusd_logs"{
+  stage.json{
+    expressions={
+      level="level",
+    }
+  }
+  stage.labels {
+    values={
+      level="",
+    }
+  }
+
+  forward_to=[loki.write.local_loki.receiver]
+}
+
+loki.write "local_loki" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
