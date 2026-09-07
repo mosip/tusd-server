@@ -22,15 +22,36 @@ loki.source.file "telemetry_files" {
 }
 
 loki.process "tusd_logs"{
+  // 1. Parse outer JSON envelope to extract level and stringified message payload
   stage.json{
     expressions={
       level="level",
+      message="message",
     }
   }
+  
+  // 2. Parse inner JSON inside 'message' to extract metric name and value
+  stage.json{
+    source= "message"
+    expressions = {
+      name= "name",
+      value="value",
+    }
+  }
+
+  // 3. Promote low-cardinality fields to labels (keeping 'value' out to protect Loki index)
   stage.labels {
     values={
       level="",
+      name="",
     }
+  }
+
+  // 4. Drop malformed log lines that failed JSON extraction
+  stage.drop{
+    source= "level"
+    expression="^$"
+
   }
 
   forward_to=[loki.write.local_loki.receiver]
