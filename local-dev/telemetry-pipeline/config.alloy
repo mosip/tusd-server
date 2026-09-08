@@ -38,7 +38,7 @@ loki.process "tusd_logs"{
       value="value",
     }
   }
-  
+
   // 3. Attach 'value' as Loki 3.0 structured metadata (unwrappable without cardinality cost)
   stage.structured_metadata {
     values = {
@@ -58,6 +58,7 @@ loki.process "tusd_logs"{
   stage.drop{
     source= "level"
     expression="^$"
+    drop_counter_reason = "malformed_json_missing_level"
 
   }
 
