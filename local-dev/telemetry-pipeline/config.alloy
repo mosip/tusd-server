@@ -38,8 +38,15 @@ loki.process "tusd_logs"{
       value="value",
     }
   }
+  
+  // 3. Attach 'value' as Loki 3.0 structured metadata (unwrappable without cardinality cost)
+  stage.structured_metadata {
+    values = {
+      value = "",
+    }
+  }
 
-  // 3. Promote low-cardinality fields to labels (keeping 'value' out to protect Loki index)
+  // 4. Promote low-cardinality fields to labels (keeping 'value' out to protect Loki index)
   stage.labels {
     values={
       level="",
@@ -47,7 +54,7 @@ loki.process "tusd_logs"{
     }
   }
 
-  // 4. Drop malformed log lines that failed JSON extraction
+  // 5. Drop malformed log lines that failed JSON extraction
   stage.drop{
     source= "level"
     expression="^$"
