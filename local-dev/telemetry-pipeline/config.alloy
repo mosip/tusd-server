@@ -27,6 +27,7 @@ loki.process "tusd_logs"{
     expressions={
       level="level",
       message="message",
+      machine="machine",
     }
   }
   
@@ -43,6 +44,7 @@ loki.process "tusd_logs"{
   stage.structured_metadata {
     values = {
       value = "",
+      machine="",
     }
   }
 
